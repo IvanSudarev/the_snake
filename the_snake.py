@@ -11,7 +11,8 @@ POSSIBLE_X = tuple(range(0, SCREEN_WIDTH, GRID_SIZE))
 POSSIBLE_Y = tuple(range(0, SCREEN_HEIGHT, GRID_SIZE))
 
 # Стартовая позиция змейки
-SNAKE_START_POSITION = (SCREEN_WIDTH // 2 - GRID_SIZE, SCREEN_HEIGHT // 2 - GRID_SIZE)
+SNAKE_START_POSITION = (SCREEN_WIDTH // 2 - GRID_SIZE,
+                        SCREEN_HEIGHT // 2 - GRID_SIZE)
 
 # Направления движения:
 UP = (0, -1)
@@ -70,11 +71,13 @@ class Apple(GameObject):
         pygame.draw.rect(screen, self.body_color, rect)
         pygame.draw.rect(screen, BORDER_COLOR, rect, 1)
 
-    def randomize_position(self) -> None:
+    def randomize_position(self, snake_positions: list) -> None:
         """Select random coordinate an apple"""
-        x_coordinate = choice(POSSIBLE_X)
-        y_coordinate = choice(POSSIBLE_Y)
-        self.position = (x_coordinate, y_coordinate)
+        self.position = choice(snake_positions)
+        while self.position in snake_positions:
+            x_coordinate = choice(POSSIBLE_X)
+            y_coordinate = choice(POSSIBLE_Y)
+            self.position = (x_coordinate, y_coordinate)
 
 
 class Snake(GameObject):
@@ -100,7 +103,7 @@ class Snake(GameObject):
                    % GRID_HEIGHT)
         next_move = (POSSIBLE_X[index_x],
                      POSSIBLE_Y[index_y])
-        print(next_move)
+        return next_move
 
     def update_direction(self):
         """Updating snake direction"""
@@ -108,9 +111,14 @@ class Snake(GameObject):
             self.direction = self.next_direction
             self.next_direction = None
 
-    def move(self):
+    def move(self, is_apple_eaten):
         """Snake movement"""
-        pass
+        self.positions.insert(0, self.next_move)
+        if not is_apple_eaten:
+            self.positions.insert(0, self.next_move)
+            self.last = self.positions.pop(-1)
+        else:
+            self.last = None
 
     def reset(self):
         """Reset snake"""
@@ -161,7 +169,7 @@ def is_apple_eaten(apple, snake):
     return snake.next_move == apple.position
 
 
-def is_game_over(snake, apple):
+def is_game_over(snake):
     """Will snake byte itself"""
     if snake.next_move in snake.positions[:-1]:
         snake.reset()
@@ -172,17 +180,22 @@ def main():
     # Инициализация PyGame:
     pygame.init()
     # Тут нужно создать экземпляры классов.
-    apple = Apple()
-    apple.randomize_position()
-    apple.draw()
     snake = Snake()
     snake.draw()
+    apple = Apple()
+    apple.randomize_position(snake.positions)
+    apple.draw()
     while True:
         clock.tick(SPEED)
-
         handle_keys(snake)
+        apple_eaten = is_apple_eaten(apple, snake)
+        snake.move(is_apple_eaten)
+        is_game_over(snake)
+        if apple_eaten:
+            apple.randomize_position()
+        snake.draw()
+        apple.draw()
         pygame.display.update()
-
 
 if __name__ == '__main__':
     main()
