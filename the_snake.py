@@ -1,4 +1,4 @@
-from random import choice
+from random import randint
 
 import pygame as pg
 
@@ -53,6 +53,14 @@ class GameObject():
         """This method over written in child objects."""
         NotImplementedError
 
+    def draw_cell(self, position, background_color,
+                  draw_border: bool = True) -> None:
+        """Draws one cell on the game field"""
+        rect = (pg.Rect(position, (GRID_SIZE, GRID_SIZE)))
+        pg.draw.rect(screen, background_color, rect)
+        if draw_border:
+            pg.draw.rect(screen, BORDER_COLOR, rect, 1)
+
 
 class Apple(GameObject):
     """Class describes apple (game object)."""
@@ -61,20 +69,20 @@ class Apple(GameObject):
         super().__init__(body_color)
         self.randomize_position(snake_positions)
 
-    def draw(self) -> None:
-        """Draws apple on the game field."""
-        rect = pg.Rect(self.position, (GRID_SIZE, GRID_SIZE))
-        pg.draw.rect(screen, self.body_color, rect)
-        pg.draw.rect(screen, BORDER_COLOR, rect, 1)
-
     def randomize_position(self, snake_positions: list) -> None:
         """Set apple on a random position on the field."""
         while True:
-            x_coordinate = choice(POSSIBLE_X)
-            y_coordinate = choice(POSSIBLE_Y)
+            x_coordinate = (randint(0, SCREEN_WIDTH // GRID_SIZE - 1)
+                            * GRID_SIZE)
+            y_coordinate = (randint(0, SCREEN_HEIGHT // GRID_SIZE - 1)
+                            * GRID_SIZE)
             self.position = (x_coordinate, y_coordinate)
             if self.position not in snake_positions:
                 break
+
+    def draw(self) -> None:
+        """Draws apple on the game field."""
+        self.draw_cell(self.position, self.body_color)
 
 
 class Snake(GameObject):
@@ -133,9 +141,7 @@ class Snake(GameObject):
     def draw(self) -> None:
         """Drawing snake"""
         for position in self.positions[:-1]:
-            rect = (pg.Rect(position, (GRID_SIZE, GRID_SIZE)))
-            pg.draw.rect(screen, self.body_color, rect)
-            pg.draw.rect(screen, BORDER_COLOR, rect, 1)
+            self.draw_cell(position, self.body_color)
 
         # Draw the head.
         head_rect = pg.Rect(self.positions[0], (GRID_SIZE, GRID_SIZE))
