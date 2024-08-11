@@ -1,4 +1,4 @@
-from random import randint
+from random import choice, randint
 from typing import Optional
 import pygame as pg
 
@@ -17,6 +17,17 @@ UP = (0, -1)
 DOWN = (0, 1)
 LEFT = (-1, 0)
 RIGHT = (1, 0)
+
+NEXT_MOVE = {
+    (LEFT, pg.K_UP): UP,
+    (RIGHT, pg.K_UP): UP,
+    (UP, pg.K_LEFT): LEFT,
+    (DOWN, pg.K_LEFT): LEFT,
+    (LEFT, pg.K_DOWN): DOWN,
+    (RIGHT, pg.K_DOWN): DOWN,
+    (UP, pg.K_RIGHT): RIGHT,
+    (DOWN, pg.K_RIGHT): RIGHT,
+}
 
 # Background color.
 BOARD_BACKGROUND_COLOR = (0, 0, 0)
@@ -94,20 +105,21 @@ class Snake(GameObject):
     def reset(self) -> None:
         """The snake is dead long live the snake."""
         self.positions = [SNAKE_START_POSITION]
-        self.direction = RIGHT
-        self.next_direction = None
+        self.direction = choice(list(NEXT_MOVE.values()))
         self.last: Optional[tuple] = None
+        self.length = 1
 
     @property
     def get_head_position(self) -> tuple:
         """Snake head position. I don't use it, so I guess I can remove it."""
         return self.positions[0]
 
-    @property
-    def next_move(self) -> tuple[int, int]:
-        """Calculation of the nex movement of the snake."""
-        next_x = self.get_head_position[0] + self.direction[0] * GRID_SIZE
-        next_y = self.get_head_position[1] + self.direction[1] * GRID_SIZE
+    def move(self, apple_position) -> None:
+        """Snake makes a move."""
+        # Calculating next snake movement.
+        next_x, next_y = self.get_head_position
+        next_x += self.direction[0] * GRID_SIZE
+        next_y += self.direction[1] * GRID_SIZE
         if next_x > SCREEN_WIDTH - GRID_SIZE:
             next_x = 0
         elif next_x < 0:
@@ -116,22 +128,20 @@ class Snake(GameObject):
             next_y = 0
         elif next_y < 0:
             next_y = SCREEN_HEIGHT - GRID_SIZE
-        next_move = (next_x, next_y)
-        return next_move
 
-    def update_direction(self) -> None:
-        """Updating snake movement direction."""
-        if self.next_direction:
-            self.direction = self.next_direction
-            self.next_direction = None
-
-    def move(self, apple_eaten) -> None:
-        """Snake makes a move."""
-        self.positions.insert(0, self.next_move)
-        if not apple_eaten:
-            self.last = self.positions.pop(-1)
+        # Did snake bite itself?
+        if (next_x, next_y) in self.positions[:-1]:
+            rect = (pg.Rect((0, 0), (SCREEN_WIDTH, SCREEN_HEIGHT)))
+            pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, rect)
+            self.reset()
         else:
-            self.last = None
+            # Snake move on one the next cell.
+            self.positions.insert(0, (next_x, next_y))
+            # Checking out will the snake eat an apple.
+            if (next_x, next_y) == apple_position:
+                self.last = None
+            else:
+                self.last = self.positions.pop(-1)
 
     def draw(self) -> None:
         """Drawing snake"""
@@ -142,38 +152,26 @@ class Snake(GameObject):
         if self.last:
             self.draw_cell(self.last, BOARD_BACKGROUND_COLOR, False)
 
+    def update_direction(self):
+        """I don't need it"""
+        pass
+
 
 def handle_keys(game_object) -> None:
     """Fuction to process user inputs."""
     for event in pg.event.get():
-        if event.type == pg.QUIT:
+        if event.type == pg.QUIT or event.type == pg.KEYDOWN \
+                and event.key == pg.K_ESCAPE:
             pg.quit()
             raise SystemExit
         elif event.type == pg.KEYDOWN:
-            if event.key == pg.K_UP and game_object.direction != DOWN:
-                game_object.next_direction = UP
-            elif event.key == pg.K_DOWN and game_object.direction != UP:
-                game_object.next_direction = DOWN
-            elif event.key == pg.K_LEFT and game_object.direction != RIGHT:
-                game_object.next_direction = LEFT
-            elif event.key == pg.K_RIGHT and game_object.direction != LEFT:
-                game_object.next_direction = RIGHT
-            elif 48 <= event.key <= 57:
+            # Change game speed.
+            if 48 <= event.key <= 57:
                 game_object.speed = (1 + event.key - 48) * 4
-            game_object.update_direction()
-
-
-def is_apple_eaten(apple, snake) -> bool:
-    """Will snake eat apple on the next move?"""
-    return snake.next_move == apple.position
-
-
-def is_game_over(snake) -> None:
-    """Will snake byte itself? If yes - reset the field, reset the snake."""
-    if snake.next_move in snake.positions[:-1]:
-        rect = (pg.Rect((0, 0), (SCREEN_WIDTH, SCREEN_HEIGHT)))
-        pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, rect)
-        snake.reset()
+            # Change direction.
+            if (game_object.direction, event.key) in NEXT_MOVE:
+                game_object.direction = NEXT_MOVE[(game_object.direction,
+                                                   event.key)]
 
 
 def main():
@@ -181,14 +179,12 @@ def main():
     pg.init()
     snake = Snake(SNAKE_COLOR)
     apple = Apple(APPLE_COLOR, snake.positions)
-    apple.randomize_position(snake.positions)
     while True:
         handle_keys(snake)
-        apple_eaten = is_apple_eaten(apple, snake)
-        snake.move(apple_eaten)
-        is_game_over(snake)
-        if apple_eaten:
+        snake.move(apple.position)
+        if snake.length < len(snake.positions):
             apple.randomize_position(snake.positions)
+            snake.length += 1
         snake.draw()
         apple.draw()
         pg.display.update()
