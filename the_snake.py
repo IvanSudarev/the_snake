@@ -1,5 +1,5 @@
 from random import randint
-
+from typing import Optional
 import pygame as pg
 
 # Constants for the game field and greed.
@@ -7,8 +7,6 @@ SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
 GRID_SIZE = 20
 GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
-POSSIBLE_X = tuple(range(0, SCREEN_WIDTH, GRID_SIZE))
-POSSIBLE_Y = tuple(range(0, SCREEN_HEIGHT, GRID_SIZE))
 
 # Snake initial position.
 SNAKE_START_POSITION = (SCREEN_WIDTH // 2 - GRID_SIZE,
@@ -45,7 +43,7 @@ clock = pg.time.Clock()
 class GameObject():
     """Class describes game objects."""
 
-    def __init__(self, body_color: tuple) -> None:
+    def __init__(self, body_color: tuple = BOARD_BACKGROUND_COLOR) -> None:
         self.body_color = body_color
         self.position = ((SCREEN_WIDTH // 2), (SCREEN_HEIGHT // 2))
 
@@ -65,17 +63,16 @@ class GameObject():
 class Apple(GameObject):
     """Class describes apple (game object)."""
 
-    def __init__(self, body_color: tuple, snake_positions: list) -> None:
+    def __init__(self, body_color: tuple = APPLE_COLOR,
+                 snake_positions: list = [SNAKE_START_POSITION]) -> None:
         super().__init__(body_color)
         self.randomize_position(snake_positions)
 
     def randomize_position(self, snake_positions: list) -> None:
         """Set apple on a random position on the field."""
         while True:
-            x_coordinate = (randint(0, SCREEN_WIDTH // GRID_SIZE - 1)
-                            * GRID_SIZE)
-            y_coordinate = (randint(0, SCREEN_HEIGHT // GRID_SIZE - 1)
-                            * GRID_SIZE)
+            x_coordinate = randint(0, GRID_WIDTH - 1) * GRID_SIZE
+            y_coordinate = randint(0, GRID_HEIGHT - 1) * GRID_SIZE
             self.position = (x_coordinate, y_coordinate)
             if self.position not in snake_positions:
                 break
@@ -88,18 +85,18 @@ class Apple(GameObject):
 class Snake(GameObject):
     """Class describes Snake (game object)."""
 
-    def __init__(self, body_color: tuple) -> None:
+    def __init__(self, body_color: tuple = SNAKE_COLOR) -> None:
         super().__init__(body_color)
-        self.positions: list = [SNAKE_START_POSITION]
+        self.reset()
         self.direction = RIGHT
         self.speed = 10
-        self.next_direction = None
-        self.last = None
 
-    @property
-    def length(self) -> int:
-        """Snake length. I don't use it, so I guess I can remove it."""
-        return len(self.positions)
+    def reset(self) -> None:
+        """The snake is dead long live the snake."""
+        self.positions = [SNAKE_START_POSITION]
+        self.direction = RIGHT
+        self.next_direction = None
+        self.last: Optional[tuple] = None
 
     @property
     def get_head_position(self) -> tuple:
@@ -109,11 +106,17 @@ class Snake(GameObject):
     @property
     def next_move(self) -> tuple[int, int]:
         """Calculation of the nex movement of the snake."""
-        index_x = (self.positions[0][0] // 20 + self.direction[0]) % GRID_WIDTH
-        index_y = ((self.positions[0][1] // 20 + self.direction[1])
-                   % GRID_HEIGHT)
-        next_move = (POSSIBLE_X[index_x],
-                     POSSIBLE_Y[index_y])
+        next_x = self.get_head_position[0] + self.direction[0] * GRID_SIZE
+        next_y = self.get_head_position[1] + self.direction[1] * GRID_SIZE
+        if next_x > SCREEN_WIDTH - GRID_SIZE:
+            next_x = 0
+        elif next_x < 0:
+            next_x = SCREEN_WIDTH - GRID_SIZE
+        if next_y > SCREEN_HEIGHT - GRID_SIZE:
+            next_y = 0
+        elif next_y < 0:
+            next_y = SCREEN_HEIGHT - GRID_SIZE
+        next_move = (next_x, next_y)
         return next_move
 
     def update_direction(self) -> None:
@@ -130,28 +133,14 @@ class Snake(GameObject):
         else:
             self.last = None
 
-    def reset(self) -> None:
-        """The snake is dead long live the snake."""
-        self.body_color = SNAKE_COLOR
-        self.positions = [SNAKE_START_POSITION]
-        self.direction = RIGHT
-        self.next_direction = None
-        self.last = None
-
     def draw(self) -> None:
         """Drawing snake"""
-        for position in self.positions[:-1]:
-            self.draw_cell(position, self.body_color)
-
         # Draw the head.
-        head_rect = pg.Rect(self.positions[0], (GRID_SIZE, GRID_SIZE))
-        pg.draw.rect(screen, self.body_color, head_rect)
-        pg.draw.rect(screen, BORDER_COLOR, head_rect, 1)
+        self.draw_cell(self.get_head_position, self.body_color)
 
         # Remove the tail (the last segment).
         if self.last:
-            last_rect = pg.Rect(self.last, (GRID_SIZE, GRID_SIZE))
-            pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, last_rect)
+            self.draw_cell(self.last, BOARD_BACKGROUND_COLOR, False)
 
 
 def handle_keys(game_object) -> None:
@@ -191,10 +180,8 @@ def main():
     """Main function."""
     pg.init()
     snake = Snake(SNAKE_COLOR)
-    snake.draw()
     apple = Apple(APPLE_COLOR, snake.positions)
     apple.randomize_position(snake.positions)
-    apple.draw()
     while True:
         handle_keys(snake)
         apple_eaten = is_apple_eaten(apple, snake)
