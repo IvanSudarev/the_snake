@@ -1,5 +1,6 @@
-from random import choice, randint
 from typing import Optional
+from random import choice, randint
+
 import pygame as pg
 
 # Constants for the game field and greed.
@@ -60,7 +61,8 @@ class GameObject():
 
     def draw(self) -> None:
         """This method over written in child objects."""
-        NotImplementedError
+        raise NotImplementedError('Method draw needs to be'
+                                  f'overwritten in {self.__class__.__name__}')
 
     def draw_cell(self, position, background_color,
                   draw_border: bool = True) -> None:
@@ -82,9 +84,8 @@ class Apple(GameObject):
     def randomize_position(self, snake_positions: list) -> None:
         """Set apple on a random position on the field."""
         while True:
-            x_coordinate = randint(0, GRID_WIDTH - 1) * GRID_SIZE
-            y_coordinate = randint(0, GRID_HEIGHT - 1) * GRID_SIZE
-            self.position = (x_coordinate, y_coordinate)
+            self.position = (randint(0, GRID_WIDTH - 1) * GRID_SIZE,
+                             randint(0, GRID_HEIGHT - 1) * GRID_SIZE)
             if self.position not in snake_positions:
                 break
 
@@ -104,7 +105,7 @@ class Snake(GameObject):
 
     def reset(self) -> None:
         """The snake is dead long live the snake."""
-        self.positions = [SNAKE_START_POSITION]
+        self.positions = [self.position]
         self.direction = choice(list(NEXT_MOVE.values()))
         self.last: Optional[tuple] = None
         self.length = 1
@@ -114,34 +115,18 @@ class Snake(GameObject):
         """Snake head position. I don't use it, so I guess I can remove it."""
         return self.positions[0]
 
-    def move(self, apple_position) -> None:
+    def move(self) -> None:
         """Snake makes a move."""
         # Calculating next snake movement.
         next_x, next_y = self.get_head_position
-        next_x += self.direction[0] * GRID_SIZE
-        next_y += self.direction[1] * GRID_SIZE
-        if next_x > SCREEN_WIDTH - GRID_SIZE:
-            next_x = 0
-        elif next_x < 0:
+        direction_x, direction_y = self.direction
+        next_x = (next_x + direction_x * GRID_SIZE) % SCREEN_WIDTH
+        next_y = (next_y + direction_y * GRID_SIZE) % SCREEN_HEIGHT
+        if next_x < 0:
             next_x = SCREEN_WIDTH - GRID_SIZE
-        if next_y > SCREEN_HEIGHT - GRID_SIZE:
-            next_y = 0
-        elif next_y < 0:
+        if next_y < 0:
             next_y = SCREEN_HEIGHT - GRID_SIZE
-
-        # Did snake bite itself?
-        if (next_x, next_y) in self.positions[:-1]:
-            rect = (pg.Rect((0, 0), (SCREEN_WIDTH, SCREEN_HEIGHT)))
-            pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, rect)
-            self.reset()
-        else:
-            # Snake move on one the next cell.
-            self.positions.insert(0, (next_x, next_y))
-            # Checking out will the snake eat an apple.
-            if (next_x, next_y) == apple_position:
-                self.last = None
-            else:
-                self.last = self.positions.pop(-1)
+        self.positions.insert(0, (next_x, next_y))
 
     def draw(self) -> None:
         """Drawing snake"""
@@ -181,7 +166,18 @@ def main():
     apple = Apple(APPLE_COLOR, snake.positions)
     while True:
         handle_keys(snake)
-        snake.move(apple.position)
+        snake.move()
+        # Did snake bite itself?
+        if snake.get_head_position in snake.positions[1:]:
+            rect = (pg.Rect((0, 0), (SCREEN_WIDTH, SCREEN_HEIGHT)))
+            pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, rect)
+            snake.reset()
+        else:
+            # Checking out will the snake eat an apple.
+            if snake.get_head_position == apple.position:
+                snake.last = None
+            else:
+                snake.last = snake.positions.pop(-1)
         if snake.length < len(snake.positions):
             apple.randomize_position(snake.positions)
             snake.length += 1
