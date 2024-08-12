@@ -124,6 +124,10 @@ class Snake(GameObject):
                                     + SCREEN_WIDTH) % SCREEN_WIDTH),
                                   ((next_y + direction_y * GRID_SIZE
                                     + SCREEN_HEIGHT) % SCREEN_HEIGHT)))
+        if self.length > len(self.positions):
+            self.last = None
+        else:
+            self.last = self.positions.pop(-1)
 
     def draw(self) -> None:
         """Drawing snake"""
@@ -166,18 +170,12 @@ def main():
         snake.move()
         # Did snake bite itself?
         if snake.get_head_position in snake.positions[1:]:
-            rect = (pg.Rect((0, 0), (SCREEN_WIDTH, SCREEN_HEIGHT)))
-            pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, rect)
+            screen.fill(BOARD_BACKGROUND_COLOR)
             snake.reset()
-        else:
-            # Checking out will the snake eat an apple.
-            if snake.get_head_position == apple.position:
-                snake.last = None
-            else:
-                snake.last = snake.positions.pop(-1)
-        if snake.length < len(snake.positions):
             apple.randomize_position(snake.positions)
+        elif snake.get_head_position == apple.position:
             snake.length += 1
+            apple.randomize_position(snake.positions)
         snake.draw()
         apple.draw()
         pg.display.update()
