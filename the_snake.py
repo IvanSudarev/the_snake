@@ -120,14 +120,15 @@ class Snake(GameObject):
         # Calculating next snake movement.
         next_x, next_y = self.get_head_position
         direction_x, direction_y = self.direction
-        self.positions.insert(0, (((next_x + direction_x * GRID_SIZE
-                                    + SCREEN_WIDTH) % SCREEN_WIDTH),
-                                  ((next_y + direction_y * GRID_SIZE
-                                    + SCREEN_HEIGHT) % SCREEN_HEIGHT)))
         if self.length > len(self.positions):
             self.last = None
         else:
             self.last = self.positions.pop(-1)
+        self.positions.insert(0, (((next_x + direction_x * GRID_SIZE
+                                    + SCREEN_WIDTH) % SCREEN_WIDTH),
+                                  ((next_y + direction_y * GRID_SIZE
+                                    + SCREEN_HEIGHT) % SCREEN_HEIGHT)))
+
 
     def draw(self) -> None:
         """Drawing snake"""
