@@ -129,7 +129,6 @@ class Snake(GameObject):
                                   ((next_y + direction_y * GRID_SIZE
                                     + SCREEN_HEIGHT) % SCREEN_HEIGHT)))
 
-
     def draw(self) -> None:
         """Drawing snake"""
         # Draw the head.
